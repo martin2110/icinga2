@@ -17,72 +17,50 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#ifndef APICLIENT_H
-#define APICLIENT_H
+#ifndef HTTPCONNECTION_H
+#define HTTPCONNECTION_H
 
-#include "remote/endpoint.hpp"
+#include "remote/httprequest.hpp"
 #include "base/tlsstream.hpp"
 #include "base/timer.hpp"
 #include "base/workqueue.hpp"
-#include "remote/i2-remote.hpp"
 
 namespace icinga
 {
-
-enum ClientRole
-{
-	ClientInbound,
-	ClientOutbound
-};
-
-struct MessageOrigin;
 
 /**
  * An API client connection.
  *
  * @ingroup remote
  */
-class I2_REMOTE_API ApiClient : public Object
+class I2_REMOTE_API HttpConnection : public Object
 {
 public:
-	DECLARE_PTR_TYPEDEFS(ApiClient);
+	DECLARE_PTR_TYPEDEFS(HttpConnection);
 
-	ApiClient(const String& identity, bool authenticated, const TlsStream::Ptr& stream, ConnectionRole role);
+	HttpConnection(const String& identity, bool authenticated, const TlsStream::Ptr& stream);
 
 	void Start(void);
 
-	String GetIdentity(void) const;
+	Object::Ptr GetApiUser(void) const;
 	bool IsAuthenticated(void) const;
-	Endpoint::Ptr GetEndpoint(void) const;
 	TlsStream::Ptr GetStream(void) const;
-	ConnectionRole GetRole(void) const;
 
 	void Disconnect(void);
 
-	void SendMessage(const Dictionary::Ptr& request);
-
-	static void HeartbeatTimerHandler(void);
-	static Value HeartbeatAPIHandler(const MessageOrigin& origin, const Dictionary::Ptr& params);
-
 private:
-	String m_Identity;
-	bool m_Authenticated;
-	Endpoint::Ptr m_Endpoint;
+	Object::Ptr m_ApiUser;
 	TlsStream::Ptr m_Stream;
-	ConnectionRole m_Role;
 	double m_Seen;
-	double m_NextHeartbeat;
-	double m_HeartbeatTimeout;
-	Timer::Ptr m_TimeoutTimer;
+	bool m_ProcessingRequest;
+	HttpRequest m_CurrentRequest;
 	boost::mutex m_DataHandlerMutex;
+	int m_Count;
 
 	StreamReadContext m_Context;
 
-	WorkQueue m_WriteQueue;
-
 	bool ProcessMessage(void);
 	void DataAvailableHandler(void);
-	void SendMessageSync(const Dictionary::Ptr& request);
 
 	static void StaticInitialize(void);
 	static void TimeoutTimerHandler(void);
@@ -91,4 +69,4 @@ private:
 
 }
 
-#endif /* APICLIENT_H */
+#endif /* HTTPCONNECTION_H */

@@ -17,31 +17,47 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#ifndef JSONRPC_H
-#define JSONRPC_H
+#ifndef HTTPRESPONSE_H
+#define HTTPRESPONSE_H
 
+#include "remote/httprequest.hpp"
 #include "base/stream.hpp"
-#include "base/dictionary.hpp"
-#include "remote/i2-remote.hpp"
+#include "base/fifo.hpp"
 
 namespace icinga
 {
 
+enum HttpResponseState
+{
+	HttpResponseStart,
+	HttpResponseHeaders,
+	HttpResponseBody
+};
+
 /**
- * A JSON-RPC connection.
+ * An HTTP response.
  *
  * @ingroup remote
  */
-class I2_REMOTE_API JsonRpc
+struct I2_REMOTE_API HttpResponse
 {
 public:
-	static void SendMessage(const Stream::Ptr& stream, const Dictionary::Ptr& message);
-	static StreamReadStatus ReadMessage(const Stream::Ptr& stream, Dictionary::Ptr *message, StreamReadContext& src, bool may_wait = false);
+	HttpResponse(const Stream::Ptr& stream, const HttpRequest& request);
+
+	void SetStatus(int code, const String& message);
+	void AddHeader(const String& key, const String& value);
+	void WriteBody(const char *data, size_t count);
+	void FinishBody(void);
 
 private:
-	JsonRpc(void);
+	HttpResponseState m_State;
+	const HttpRequest& m_Request;
+	Stream::Ptr m_Stream;
+	FIFO::Ptr m_Body;
+
+	void FinishHeaders(void);
 };
 
 }
 
-#endif /* JSONRPC_H */
+#endif /* HTTPRESPONSE_H */

@@ -17,31 +17,54 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#ifndef JSONRPC_H
-#define JSONRPC_H
+#ifndef HTTPREQUEST_H
+#define HTTPREQUEST_H
 
 #include "base/stream.hpp"
-#include "base/dictionary.hpp"
 #include "remote/i2-remote.hpp"
 
 namespace icinga
 {
 
+enum HttpVersion
+{
+	HttpVersion10,
+	HttpVersion11
+};
+
+enum HttpRequestState
+{
+	HttpRequestStart,
+	HttpRequestHeaders,
+	HttpRequestBody
+};
+
 /**
- * A JSON-RPC connection.
+ * An HTTP request.
  *
  * @ingroup remote
  */
-class I2_REMOTE_API JsonRpc
+struct I2_REMOTE_API HttpRequest
 {
 public:
-	static void SendMessage(const Stream::Ptr& stream, const Dictionary::Ptr& message);
-	static StreamReadStatus ReadMessage(const Stream::Ptr& stream, Dictionary::Ptr *message, StreamReadContext& src, bool may_wait = false);
+	bool Complete;
+
+	String RequestMethod;
+	String Url;
+	HttpVersion ProtocolVersion;
+
+	int ContentLength;
+	String TransferEncoding;
+	bool CloseConnection;
+
+	HttpRequest(void);
+
+	bool Parse(const Stream::Ptr& stream, StreamReadContext& src, bool may_wait);
 
 private:
-	JsonRpc(void);
+	HttpRequestState m_State;
 };
 
 }
 
-#endif /* JSONRPC_H */
+#endif /* HTTPREQUEST_H */
