@@ -17,49 +17,60 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#include "base/urlparser.hpp"
-#include <boost/test/unit_test.hpp>
-#include <boost/foreach.hpp>
+#ifndef URL_H
+#define URL_H
 
-using namespace icinga;
+#include "base/i2-base.hpp"
+#include "base/object.hpp"
+#include "base/string.hpp"
+#include "base/value.hpp"
+#include <map>
+#include <vector>
 
-BOOST_AUTO_TEST_SUITE(base_urlparser)
-
-BOOST_AUTO_TEST_CASE(construct)
+namespace icinga
 {
-	Url::Url *url = new Url("");
-	BOOST_CHECK(url);
-}
 
-BOOST_AUTO_TEST_CASE(url_id_and_path)
+enum UrlScheme {
+	 UrlSchemeHttp,
+	 UrlSchemeHttps,
+	 UrlSchemeFtp,
+	 UrlSchemeUndefined,
+};
+
+/**
+ * A url parser to use with the API
+ *
+ * @ingroup base
+ */
+
+class I2_BASE_API Url
 {
-	Url::Url *url = new Url("http://icinga.org/foo/bar/baz?hurr=durr");
-	BOOST_CHECK(url->m_Scheme == UrlSchemeHttp);
-	BOOST_CHECK(url->m_Host == "icinga.org");
-	std::vector<String> PathCorrect;
-	PathCorrect.push_back("foo");
-	PathCorrect.push_back("bar");
-	PathCorrect.push_back("baz");
-	BOOST_CHECK(url->m_Path == PathCorrect);
+public:
+	Url(const String& url);
+	
+	String format(void);
+	bool IsValid(void);
+	void Initialize(void);
+
+	String m_Host;
+	UrlScheme m_Scheme;
+	std::map<String,Value> m_Parameters;
+	std::vector<String> m_Path;
+
+private:
+	bool m_Valid;
+	String m_PercentCodes;
+
+	bool ValidateToken(const String& token, const String& illegalSymbols);
+	bool ParseScheme(const String& scheme);
+	bool ParseHost(const String& host);
+	bool ParsePath(const String& path);
+	bool ParseParameters(const String& path);
+
+//	bool IsAscii(const unsigned char& c, const int flag);
+	String PercentDecode(const String& token);
+	String PercentEncode(const String& token);
+};
+
 }
-
-BOOST_AUTO_TEST_CASE(url_parameters)
-{
-	Url::Url *url = new Url("https://icinga.org/hya/?rain=karl&rair=robert&foo[]=bar");
-
-	BOOST_CHECK(url->m_Parameters["rair"] == "robert");
-	BOOST_CHECK(url->m_Parameters["rain"] == "karl");
-	Array::Ptr test = url->m_Parameters["foo"];
-	BOOST_CHECK(test->GetLength() == 1);
-	BOOST_CHECK(test->Get(0) == "bar");
-}
-
-BOOST_AUTO_TEST_CASE(url_format)
-{
-	String surl = "http://foo.bar/baum?la=ba";
-	Url::Url *url = new Url(surl);
-
-	BOOST_CHECK(surl == url->format());
-}
-
-BOOST_AUTO_TEST_SUITE_END()
+#endif /* URL_H */
