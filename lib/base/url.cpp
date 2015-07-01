@@ -229,18 +229,23 @@ bool Url::ParseParameters(const String& parameters)
 
 		key = token.SubStr(0, kvSep);
 		value = token.SubStr(kvSep+1);
+		
+		std::cout << (*key.RBegin()) << std::endl << (*(key.RBegin()+1)) << std::endl;
 
-		if (*key.RBegin() == ']' && *key.RBegin()+1 == '[') {
+		if (*key.RBegin() == ']' && *(key.RBegin()+1) == '[') {
+			key = key.SubStr(0, key.GetLength() - 2);
 			key = PercentDecode(key);
-			it = m_Parameters.find(key.SubStr(0, key.GetLength() - 2);
+			it = m_Parameters.find(key);
 
 			if (it == m_Parameters.end()) {
 				Array::Ptr tmp = new Array();
 				tmp->Add(PercentDecode(value));
 				m_Parameters[key] = tmp;
-			} else {
+			} else if (m_Parameters[key].IsObjectType<Array>()){
 				Array::Ptr arr = it->second;
 				arr->Add(PercentDecode(value));
+			} else {
+				return false;
 			}
 		} else {
 			m_Parameters[key] = PercentDecode(value);

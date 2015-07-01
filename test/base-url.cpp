@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "base/url.hpp"
+#include "base/array.hpp"
 #include <boost/test/unit_test.hpp>
 #include <boost/foreach.hpp>
 
@@ -49,7 +50,8 @@ BOOST_AUTO_TEST_CASE(url_parameters)
 
 	BOOST_CHECK(url->m_Parameters["rair"] == "robert");
 	BOOST_CHECK(url->m_Parameters["rain"] == "karl");
-	BOOST_CHECK(url->m_Parameters["foo"].IsValue
+	BOOST_CHECK(url->m_Parameters.find("foo") != url->m_Parameters.end());
+	BOOST_CHECK(url->m_Parameters["foo"].IsObjectType<Array>());
 	Array::Ptr test = url->m_Parameters["foo"];
 	BOOST_CHECK(test->GetLength() == 1);
 	BOOST_CHECK(test->Get(0) == "bar");
