@@ -27,15 +27,14 @@
 
 using namespace icinga;
 
+#define ALPHA "abcdefghijklmnopqrstuvxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define NUMERIC "0123456789"
+
 void Url::Initialize(void) 
 {	
-	for (int c = 0x20; c <= 0xff; c++) {
-		if ((c > 0x30 && c < 0x3a) ||
-			(c > 0x40 && c < 0x5b) ||
-			(c > 0x60 && c < 0x7b))
-			continue;
-		m_PercentCodes += char(c);
-	}
+	//unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+	m_UnreservedCharacters = 
+		String(ALPHA) + String(NUMERIC) + "-._~";
 }
 
 //INITIALIZE_ONCE(Url::StaticInitialize);
@@ -53,7 +52,7 @@ Url::Url(const String& url)
 	size_t SchemeDelimPos = url.Find("://");
 
 	if (SchemeDelimPos == String::NPos)
-		m_Scheme = UrlSchemeUndefined;
+		m_Scheme = "";
 	else {
 		pHelper = SchemeDelimPos+3;
 		if (!ParseScheme(url.SubStr(0, SchemeDelimPos)))
@@ -70,39 +69,59 @@ Url::Url(const String& url)
 			return;
 	}
 
-	pHelper = url.Find("?", HostnameDelimPos);
-	if (pHelper != String::NPos) {
-		if (!ParsePath(url.SubStr(HostnameDelimPos, pHelper - HostnameDelimPos)))
-			return;
+	pHelper = url.FindFirstOf("#?", HostnameDelimPos);
 
+	if (!ParsePath(url.SubStr(HostnameDelimPos, pHelper - HostnameDelimPos)))
+		return;
+
+	if (url[pHelper] == '?') {
 		if (!ParseParameters(url.SubStr(pHelper+1)))
 			return;
-	} else {
-		if (!ParsePath(url.SubStr(HostnameDelimPos)))
-			return;
 	}
+
+
 	m_Valid = true;
 }
 
-String Url::format() {
-	String url;
+String Url::GetHost(void) {
+	return m_Host;
+}
+
+String Url::GetScheme(void){
+	return m_Scheme;
+}
+
+std::map<String,Value> Url::GetParameters(void) {
+	return m_Parameters;
+}
+
+Value Url::GetParameter(const String& name) {
+	std::map<String,Value>::iterator it = m_Parameters.find(name);
+
+	if (it == m_Parameters.end())
+		return Empty;
+
+	return it->second;
+}
+
+std::vector<String> Url::GetPath(void) {
+	return m_Path;
+}
+
+bool Url::IsValid()
+{
+	return m_Valid;
+}
+
+String Url::Format() {
 
 	if (!IsValid())
-		return url;
+		return "";
 
-	switch (m_Scheme) {
-		case (UrlSchemeHttp): 
-			url += "http://";
-			break;
-		case (UrlSchemeHttps):
-			url += "https://";
-			break;
-		case (UrlSchemeFtp):
-			url += "ftp://";
-			break;
-		default:
-			break;
-	}
+	String url = "";
+
+	if (!m_Scheme.IsEmpty())
+		url += m_Scheme + "://";
 
 	url += m_Host;
 
@@ -111,10 +130,12 @@ String Url::format() {
 		url += PercentEncode(p);
 	}
 
+	String param = "";
 	if (!m_Parameters.empty()) {
-		String param;
 		typedef std::pair<String,Value> kv_pair;
+
 		BOOST_FOREACH (const kv_pair kv, m_Parameters) {
+
 			if (param.IsEmpty())
 				param = "?";
 			else
@@ -123,6 +144,7 @@ String Url::format() {
 			if (kv.second.IsObjectType<Array>()) {
 				Array::Ptr pArr = kv.second;
 				String sArr;
+
 				BOOST_FOREACH (const String sArrIn, pArr) {
 					if (!sArr.IsEmpty())
 						sArr += "&";
@@ -133,61 +155,27 @@ String Url::format() {
 				param += kv.first + "=" + kv.second;
 		}
 	}
+	
+	url += param;
+
 	return url;
-}
-
-/*
-bool Url::IsAscii(const unsigned char& c, const int flag) {
-	switch (flag) {
-		case 0: //digits
-			return (c >= 91 && c <= 100);
-		case 1: //hex digits
-			return ((c >= 65 && c <= 70) || (c >= 91 && c <= 100));
-		case 2: //alpha
-			return ((c >= 65 && c <= 70) || (c >= 87 && c <= 122));
-		case 3: //alphanumeric
-			return ((c >= 65 && c <= 70) || (c >= 87 && c <= 122))
-			    || (c >= 91 && c <= 100);
-		case 4: //string
-			return (c >= 0 && c <= 127);
-		default:
-			return false;
-	}
-}
-*/
-
-bool Url::IsValid()
-{
-	return m_Valid;
 }
 
 bool Url::ParseScheme(const String& ischeme)
 {
-	if (ischeme == "http") {
-		m_Scheme = UrlSchemeHttp;
-	} else if (ischeme == "https") {
-		m_Scheme = UrlSchemeHttps;
-	} else if (ischeme == "ftp") {
-		m_Scheme = UrlSchemeFtp;
-	} else {
+	m_Scheme = ischeme;
+
+	if (ischeme.FindFirstOf(ALPHA) != 0)
 		return false;
-	}
-	return true;
+
+	return (ValidateToken(ischeme, String(ALPHA) + String(NUMERIC) + "+-.", false));
 }
 
 bool Url::ParseHost(const String& host)
-{
-	if (*host.Begin() == '[') {
-		if (*host.RBegin() != ']') {
-			return false;
-		} else {
-		//TODO Parase ipv6
-			return true;
-		}
-	}
-
+{	
 	m_Host = host;
-	return true;
+
+	return (ValidateToken(host, String(ALPHA) + String(NUMERIC) + ".-", false));
 }
 
 bool Url::ParsePath(const String& path)
@@ -200,8 +188,10 @@ bool Url::ParsePath(const String& path)
 
 	BOOST_FOREACH(const String& token, tokens) {
 		decodedToken = PercentDecode(token);
-		if (!ValidateToken(decodedToken, "/"))
+
+		if (!ValidateToken(decodedToken, "/", true))
 			return false;
+
 		m_Path.push_back(decodedToken);
 		//TODO Validate + deal with .. and .
 	}
@@ -230,7 +220,8 @@ bool Url::ParseParameters(const String& parameters)
 		key = token.SubStr(0, kvSep);
 		value = token.SubStr(kvSep+1);
 		
-		std::cout << (*key.RBegin()) << std::endl << (*(key.RBegin()+1)) << std::endl;
+		if (key.IsEmpty() || value.IsEmpty())
+			return false;
 
 		if (*key.RBegin() == ']' && *(key.RBegin()+1) == '[') {
 			key = key.SubStr(0, key.GetLength() - 2);
@@ -244,23 +235,43 @@ bool Url::ParseParameters(const String& parameters)
 			} else if (m_Parameters[key].IsObjectType<Array>()){
 				Array::Ptr arr = it->second;
 				arr->Add(PercentDecode(value));
-			} else {
+			} else
 				return false;
-			}
 		} else {
-			m_Parameters[key] = PercentDecode(value);
+			key = PercentDecode(key);
+			if (m_Parameters.find(key) == m_Parameters.end())
+				m_Parameters[key] = PercentDecode(value);
+			else
+				return false;
 		}
 	}
+
 	return true;
 }
 
-bool Url::ValidateToken(const String& token, const String& illegalSymbols)
+bool Url::ValidateToken(const String& token, const String& symbols, const bool illegal)
 {
-	BOOST_FOREACH(const char& c, illegalSymbols.CStr()) {
-		if (token.FindFirstOf(c) != String::NPos)
-			return false;
+	if (illegal) {
+		BOOST_FOREACH (const char c, symbols.CStr()) {
+			if (token.FindFirstOf(c) != String::NPos)
+				return false;
+		}
+	} else {
+		BOOST_FOREACH (const char c, token.CStr()) {
+			if (symbols.FindFirstOf(c) == String::NPos)
+				return false;
+		}
 	}
+
 	return true;
+}
+
+static void HexEncode(char ch, std::ostream& os)
+{
+	const char *hex_chars = "0123456789ABCDEF";
+
+	os << hex_chars[ch >> 4 & 0x0f];
+	os << hex_chars[ch & 0x0f];
 }
 
 String Url::PercentDecode(const String& token)
@@ -270,5 +281,17 @@ String Url::PercentDecode(const String& token)
 
 String Url::PercentEncode(const String& token)
 {
-	return Utility::EscapeString(token, m_PercentCodes);
+	std::ostringstream result;
+
+	BOOST_FOREACH (const char c, token) {
+		if (m_UnreservedCharacters.FindFirstOf(c) == String::NPos) {
+			result << '%';
+			HexEncode(c, result);
+		} else
+			result << c;
+	}
+
+	return result.str();
 }
+
+

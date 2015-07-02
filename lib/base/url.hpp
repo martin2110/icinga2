@@ -29,14 +29,6 @@
 
 namespace icinga
 {
-
-enum UrlScheme {
-	 UrlSchemeHttp,
-	 UrlSchemeHttps,
-	 UrlSchemeFtp,
-	 UrlSchemeUndefined,
-};
-
 /**
  * A url parser to use with the API
  *
@@ -48,26 +40,31 @@ class I2_BASE_API Url
 public:
 	Url(const String& url);
 	
-	String format(void);
+	String Format(void);
 	bool IsValid(void);
 	void Initialize(void);
 
-	String m_Host;
-	UrlScheme m_Scheme;
-	std::map<String,Value> m_Parameters;
-	std::vector<String> m_Path;
+	String GetHost(void);
+	String GetScheme(void);
+	std::map<String,Value> GetParameters(void);
+	Value GetParameter(const String& name);
+	std::vector<String> GetPath(void);
 
 private:
 	bool m_Valid;
-	String m_PercentCodes;
+	String m_UnreservedCharacters;
 
-	bool ValidateToken(const String& token, const String& illegalSymbols);
+	String m_Host;
+	String m_Scheme;
+	std::map<String,Value> m_Parameters;
+	std::vector<String> m_Path;
+
+	bool ValidateToken(const String& token, const String& symbols, const bool illegal=0);
 	bool ParseScheme(const String& scheme);
 	bool ParseHost(const String& host);
 	bool ParsePath(const String& path);
 	bool ParseParameters(const String& path);
 
-//	bool IsAscii(const unsigned char& c, const int flag);
 	String PercentDecode(const String& token);
 	String PercentEncode(const String& token);
 };
