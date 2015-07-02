@@ -30,7 +30,7 @@
 namespace icinga
 {
 /**
- * A url parser to use with the API
+ * A url class to use with the API
  *
  * @ingroup base
  */
@@ -40,33 +40,29 @@ class I2_BASE_API Url
 public:
 	Url(const String& url);
 	
-	String Format(void);
-	bool IsValid(void);
-	void Initialize(void);
+	String Format(void) const;
+	bool IsValid(void) const;
 
-	String GetHost(void);
-	String GetScheme(void);
-	std::map<String,Value> GetParameters(void);
-	Value GetParameter(const String& name);
-	std::vector<String> GetPath(void);
+	String GetAuthority(void) const;
+	String GetScheme(void) const;
+	std::map<String,Value> GetQuery(void) const;
+	Value GetQueryElement(const String& name) const;
+	std::vector<String> GetPath(void) const;
 
 private:
 	bool m_Valid;
 	String m_UnreservedCharacters;
 
-	String m_Host;
+	String m_Authority;
 	String m_Scheme;
-	std::map<String,Value> m_Parameters;
+	std::map<String,Value> m_Query;
 	std::vector<String> m_Path;
 
 	bool ValidateToken(const String& token, const String& symbols, const bool illegal=0);
 	bool ParseScheme(const String& scheme);
-	bool ParseHost(const String& host);
+	bool ParseAuthority(const String& host);
 	bool ParsePath(const String& path);
-	bool ParseParameters(const String& path);
-
-	String PercentDecode(const String& token);
-	String PercentEncode(const String& token);
+	bool ParseQuery(const String& path);
 };
 
 }
