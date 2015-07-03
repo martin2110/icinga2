@@ -33,46 +33,58 @@ using namespace icinga;
 
 REGISTER_TYPE(Url);
 
-bool Url::Parse(const String& url)
+bool Url::Parse(const String& base_url)
 {
 	m_Valid = false;
+	String url = base_url;
 
 	if (url.GetLength() == 0)
 		return m_Valid;
 
-	size_t pHelper = url.Find("://");
+	size_t pHelper = url.Find(":");
 
 	if (pHelper == String::NPos) {
 		m_Scheme = "";
-		pHelper = 0;
 	} else {
 		if (!ParseScheme(url.SubStr(0, pHelper)))
 			return m_Valid;
-		pHelper += 3;
+		url = url.SubStr(pHelper+1);
 	}
 
-	size_t pHelperTwo = pHelper;
+	if (*url.Begin() != '/')
+		return m_Valid;
+	
+	if (url.GetLength() == 1) {
+		m_Path.push_back("/");
+		m_Valid = true;
+		return m_Valid;
+	}
 
-	if (url[pHelper] == '/')
+	if (*(url.Begin()+1) != '/')
 		m_Authority = "";
 	else {
-		pHelperTwo = url.Find("/", pHelper);
-
-		if (!ParseAuthority(url.SubStr(pHelper, pHelperTwo - pHelper)))
+		pHelper = url.Find("/", 2);
+		if (pHelper == String::NPos)
 			return m_Valid;
+		if (!ParseAuthority(url.SubStr(2, pHelper-2)))
+			return m_Valid;
+		url = url.SubStr(pHelper);
 	}
-
+/*
 	if (!m_Scheme.IsEmpty() && m_Authority.IsEmpty())
 		return m_Valid;
+*/
 
-	pHelper = url.FindFirstOf("#?", pHelperTwo);
+	pHelper = url.FindFirstOf("#?");
 
-	if (!ParsePath(url.SubStr(pHelperTwo, pHelper - pHelperTwo)))
+	if (!ParsePath(url.SubStr(1, pHelper-1)))
 		return m_Valid;
 
-	if (url[pHelper] == '?') {
-		pHelperTwo = url.Find("#", pHelper);
-		if (!ParseQuery(url.SubStr(pHelper+1, pHelperTwo - (pHelper + 1))))
+	url = url.SubStr(pHelper);
+
+	if (*url.Begin() == '?') {
+		pHelper = url.Find("#");
+		if (!ParseQuery(url.SubStr(0, pHelper)))
 			return m_Valid;
 	}
 
@@ -130,7 +142,7 @@ String Url::Format(void) const
 
 	BOOST_FOREACH (const String p, m_Path) {
 		url += '/';
-		url += Utility::EscapeString(p, ACPATH, false);
+		url += Utility::EscapeString(p, ACPATHSEGMENT, false);
 	}
 
 	String param = "";
@@ -185,6 +197,7 @@ bool Url::ParseAuthority(const String& authority)
 
 bool Url::ParsePath(const String& path)
 {
+
 	std::string pathStr = path;
 	boost::char_separator<char> sep("/");
 	boost::tokenizer<boost::char_separator<char> >
@@ -194,7 +207,7 @@ bool Url::ParsePath(const String& path)
 	BOOST_FOREACH(const String& token, tokens) {
 		decodedToken = Utility::UnescapeString(token);
 
-		if (!ValidateToken(decodedToken, "/", true))
+		if (!ValidateToken(decodedToken, ACPATHSEGMENT, false))
 			return false;
 
 		m_Path.push_back(decodedToken);
@@ -214,17 +227,15 @@ bool Url::ParseQuery(const String& parameters)
 
 
 	BOOST_FOREACH(const String& token, tokens) {
-		std::cout << token << '\n';
 		size_t kvSep = token.Find("=");
 
+		std::cout << token << '\n';
 		if (kvSep == String::NPos)
 			return false;
 
 		String key = token.SubStr(0, kvSep);
 		String value = token.SubStr(kvSep+1);
 		
-		std::cout << key << " = " << value << std::endl;
-
 		if (key.IsEmpty() || value.IsEmpty())
 			return false;
 
