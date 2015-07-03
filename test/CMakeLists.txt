@@ -92,9 +92,10 @@ add_boost_test(base
 	base_type/byname
 	base_type/instantiate
 	base_url/construct
-	base_url/url_id_and_path
-	base_url/url_parameters
-	base_utl/url_format
+	base_url/id_and_path
+	base_url/parameters
+	base_url/format
+	base_url/illegal_legal_strings
         base_value/scalar
         base_value/convert
         base_value/format

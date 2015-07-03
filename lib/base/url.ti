@@ -17,62 +17,13 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#ifndef URL_H
-#define URL_H
-
-#include "base/i2-base.hpp"
-#include "base/url.thpp"
-#include "base/object.hpp"
-#include "base/string.hpp"
-#include "base/value.hpp"
-#include <map>
-#include <vector>
+#include "base/dynamicobject.hpp"
 
 namespace icinga
 {
 
-/**
- * A url class to use with the API
- *
- * @ingroup base
- */
-class I2_BASE_API Url : public ObjectImpl<Url>
+abstract class Url : DynamicObject
 {
-public:
-	DECLARE_OBJECT(Url);
-
-	inline Url(void)
-		: m_Valid(false)
-	{ }
-
-	inline ~Url(void)
-	{ }
-
-	bool Parse(const String& url);
-	String Format(void) const;
-	bool IsValid(void) const;
-
-	String GetAuthority(void) const;
-	String GetScheme(void) const;
-	std::map<String,Value> GetQuery(void) const;
-	Value GetQueryElement(const String& name) const;
-	std::vector<String> GetPath(void) const;
-
-private:
-	bool m_Valid;
-	String m_UnreservedCharacters;
-
-	String m_Authority;
-	String m_Scheme;
-	std::map<String,Value> m_Query;
-	std::vector<String> m_Path;
-
-	bool ValidateToken(const String& token, const String& symbols, const bool illegal=0);
-	bool ParseScheme(const String& scheme);
-	bool ParseAuthority(const String& host);
-	bool ParsePath(const String& path);
-	bool ParseQuery(const String& path);
 };
 
 }
-#endif /* URL_H */

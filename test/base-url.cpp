@@ -30,64 +30,75 @@ BOOST_AUTO_TEST_SUITE(base_url)
 
 BOOST_AUTO_TEST_CASE(construct)
 {
-	Url::Url *url = new Url("");
+	Url::Ptr url = new Url();
 	BOOST_CHECK(url);
+	BOOST_CHECK(!url->IsValid());
 }
 
-BOOST_AUTO_TEST_CASE(url_id_and_path)
+BOOST_AUTO_TEST_CASE(id_and_path)
 {
-	Url::Url *url = new Url("http://icinga.org/foo/bar/baz?hurr=durr");
+	Url::Ptr url = new Url();
+	url->Parse("http://icinga.org/foo/bar/baz?hurr=durr");
+
 	BOOST_CHECK(url->GetScheme() == "http");
-	BOOST_CHECK(url->GetHost() == "icinga.org");
+
+	BOOST_CHECK(url->GetAuthority() == "icinga.org");
+
 	std::vector<String> PathCorrect;
 	PathCorrect.push_back("foo");
 	PathCorrect.push_back("bar");
 	PathCorrect.push_back("baz");
+
 	BOOST_CHECK(url->GetPath() == PathCorrect);
 }
 
-BOOST_AUTO_TEST_CASE(url_parameters)
+BOOST_AUTO_TEST_CASE(parameters)
 {
-	Url::Url *url = new Url("https://icinga.org/hya/?rain=karl&rair=robert&foo[]=bar");
+	Url::Ptr url = new Url();
+	url->Parse("https://icinga.org/hya/?rain=karl&rair=robert&foo[]=bar");
 
-	BOOST_CHECK(url->GetParameter("rair") == "robert");
-	BOOST_CHECK(url->GetParameter("rain") == "karl");
-	BOOST_CHECK(url->GetParameter("foo").IsObjectType<Array>());
-	Array::Ptr test = url->GetParameter("foo");
+	BOOST_CHECK(url->GetQueryElement("rair") == "robert");
+	BOOST_CHECK(url->GetQueryElement("rain") == "karl");
+	BOOST_CHECK(url->GetQueryElement("foo").IsObjectType<Array>());
+	Array::Ptr test = url->GetQueryElement("foo");
 	BOOST_CHECK(test->GetLength() == 1);
 	BOOST_CHECK(test->Get(0) == "bar");
 }
 
-BOOST_AUTO_TEST_CASE(url_format)
+BOOST_AUTO_TEST_CASE(format)
 {
 	String surl;
-	Url::Url *url;
+	Url::Ptr url = new Url();
 
 	surl = "http://foo.bar/baum";
-    url = new Url(surl);
+	url->Parse(surl);
 	BOOST_CHECK(surl == url->Format());
 
-	surl = "http://foo.bar/%42aum/../Baum";
-    url = new Url(surl);
-	BOOST_CHECK("http://foo.bar/Baum" == url->Format());
-
-
+	surl = "/%42aum/../Baum";
+	url->Parse(surl);
+	BOOST_CHECK("/Baum" == url->Format());
 }
 
-BOOST_AUTO_TEST_CASE(url_illegal_legal_strings)
+BOOST_AUTO_TEST_CASE(illegal_legal_strings)
 {
-	Url::Url *url;
-	url = new Url("/?foo=barr&foo[]=bazz");
+	Url::Ptr url = new Url();
+
+	url->Parse("/?foo=barr&foo[]=bazz");
 	BOOST_CHECK(!url->IsValid());
-	url = new Url("/?]=gar");
+
+	url->Parse("/?]=gar");
 	BOOST_CHECK(!url->IsValid());
-	url = new Url("/?foo=baz??&???");
+
+	url->Parse("/?foo=baz??&???");
 	BOOST_CHECK(!url->IsValid());
-	url = new Url("/?foo=bar&foo=baz");
+
+	url->Parse("/?foo=bar&foo=baz");
 	BOOST_CHECK(!url->IsValid());
-	url = new Url("/?foo=bar&[]=d");
+
+	url->Parse("/?foo=bar&[]=d");
 	BOOST_CHECK(!url->IsValid());
-	url = new Url("/?fo=&bar=garOA");
+
+	url->Parse("/?fo=&bar=garOA");
 	BOOST_CHECK(!url->IsValid());
 }
 

@@ -18,37 +18,37 @@
  ******************************************************************************/
 
 #include "base/url.hpp"
+#include "base/url.tcpp"
+#include "url-characters.hpp"
 #include "base/array.hpp"
 #include "base/utility.hpp"
+#include "base/primitivetype.hpp"
 #include <boost/tokenizer.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
+#include <iostream>
+
 using namespace icinga;
 
-#define ALPHA "abcdefghijklmnopqrstuvxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-#define NUMERIC "0123456789"
+REGISTER_TYPE(Url);
 
-#define ACSCHEME ALPHA NUMERIC ".-+"
-#define ACAUTHORITY ALPHA NUMERIC ".-"
-#define ACPATH ALPHA NUMERIC
-#define ACQUERY ALPHA NUMERIC "-._~"
-
-Url::Url(const String& url) 
+bool Url::Parse(const String& url)
 {
 	m_Valid = false;
 
 	if (url.GetLength() == 0)
-		return;
+		return m_Valid;
 
 	size_t pHelper = url.Find("://");
 
-	if (pHelper == String::NPos)
+	if (pHelper == String::NPos) {
 		m_Scheme = "";
-	else {
-		pHelper += 3;
+		pHelper = 0;
+	} else {
 		if (!ParseScheme(url.SubStr(0, pHelper)))
-			return;
+			return m_Valid;
+		pHelper += 3;
 	}
 
 	size_t pHelperTwo = pHelper;
@@ -59,25 +59,26 @@ Url::Url(const String& url)
 		pHelperTwo = url.Find("/", pHelper);
 
 		if (!ParseAuthority(url.SubStr(pHelper, pHelperTwo - pHelper)))
-			return;
+			return m_Valid;
 	}
 
 	if (!m_Scheme.IsEmpty() && m_Authority.IsEmpty())
-		return;
+		return m_Valid;
 
 	pHelper = url.FindFirstOf("#?", pHelperTwo);
 
-	if (!ParsePath(url.SubStr(pHelper, pHelperTwo - pHelper)))
-		return;
+	if (!ParsePath(url.SubStr(pHelperTwo, pHelper - pHelperTwo)))
+		return m_Valid;
 
 	if (url[pHelper] == '?') {
 		pHelperTwo = url.Find("#", pHelper);
-		if (!ParseQuery(url.SubStr(pHelper+1, pHelper - (pHelperTwo + 1))))
-			return;
+		if (!ParseQuery(url.SubStr(pHelper+1, pHelperTwo - (pHelper + 1))))
+			return m_Valid;
 	}
 
-
 	m_Valid = true;
+
+	return m_Valid;
 }
 
 String Url::GetAuthority(void) const
@@ -175,17 +176,18 @@ bool Url::ParseScheme(const String& ischeme)
 }
 
 bool Url::ParseAuthority(const String& authority)
-{	
+{
+	//TODO parse all Authorities
 	m_Authority = authority;
 
-	return (ValidateToken(authority, ACAUTHORITY, false));
+	return (ValidateToken(authority, ACHOST, false));
 }
 
 bool Url::ParsePath(const String& path)
 {
 	std::string pathStr = path;
 	boost::char_separator<char> sep("/");
-	boost::tokenizer<boost::char_separator<char> > 
+	boost::tokenizer<boost::char_separator<char> >
 	    tokens(pathStr, sep);
 	String decodedToken;
 
@@ -212,6 +214,7 @@ bool Url::ParseQuery(const String& parameters)
 
 
 	BOOST_FOREACH(const String& token, tokens) {
+		std::cout << token << '\n';
 		size_t kvSep = token.Find("=");
 
 		if (kvSep == String::NPos)
@@ -220,10 +223,12 @@ bool Url::ParseQuery(const String& parameters)
 		String key = token.SubStr(0, kvSep);
 		String value = token.SubStr(kvSep+1);
 		
+		std::cout << key << " = " << value << std::endl;
+
 		if (key.IsEmpty() || value.IsEmpty())
 			return false;
 
-		if (*key.RBegin() == ']' && *(key.RBegin()+1) == '[') {
+		if (key.GetLength() >= 3 && *key.RBegin() == ']' && *(key.RBegin()+1) == '[') {
 			key = key.SubStr(0, key.GetLength() - 2);
 			key = Utility::UnescapeString(key);
 			std::map<String, Value>::iterator it = m_Query.find(key);

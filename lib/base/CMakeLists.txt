@@ -21,6 +21,7 @@ mkclass_target(filelogger.ti filelogger.tcpp filelogger.thpp)
 mkclass_target(logger.ti logger.tcpp logger.thpp)
 mkclass_target(streamlogger.ti streamlogger.tcpp streamlogger.thpp)
 mkclass_target(sysloglogger.ti sysloglogger.tcpp sysloglogger.thpp)
+mkclass_target(url.ti url.tcpp url.thpp)
 
 set(base_SOURCES
   application.cpp application.thpp application-version.cpp array.cpp array-script.cpp boolean.cpp boolean-script.cpp console.cpp context.cpp
@@ -31,7 +32,7 @@ set(base_SOURCES
   scriptutils.cpp serializer.cpp socket.cpp socketevents.cpp stacktrace.cpp
   statsfunction.cpp stdiostream.cpp stream.cpp streamlogger.cpp streamlogger.thpp string.cpp string-script.cpp
   sysloglogger.cpp sysloglogger.thpp tcpsocket.cpp thinmutex.cpp threadpool.cpp timer.cpp
-  tlsstream.cpp tlsutility.cpp type.cpp unixsocket.cpp url.cpp utility.cpp value.cpp
+  tlsstream.cpp tlsutility.cpp type.cpp unixsocket.cpp url.cpp url.thpp utility.cpp value.cpp
   value-operators.cpp workqueue.cpp
 )
 

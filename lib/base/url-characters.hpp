@@ -16,63 +16,27 @@
  * along with this program; if not, write to the Free Software Foundation     *
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
+#ifndef URL_CHARACTERS_H
+#define URL_CHARACTERS_H
 
-#ifndef URL_H
-#define URL_H
+#define ALPHA "abcdefghijklmnopqrstuvxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define NUMERIC "0123456789"
 
-#include "base/i2-base.hpp"
-#include "base/url.thpp"
-#include "base/object.hpp"
-#include "base/string.hpp"
-#include "base/value.hpp"
-#include <map>
-#include <vector>
+#define UNRESERVED ALPHA NUMERIC "-._~"
+#define GEN_DELIMS ":/?#[]@"
+#define SUB_DELIMS "!$&'()*+,;="
+#define RESERVED GEN_DELIMS SUB-DELIMS
+#define PCHAR UNRESERVED SUB_DELIMS ":@"
 
-namespace icinga
-{
+#define ACSCHEME ALPHA NUMERIC ".-+"
 
-/**
- * A url class to use with the API
- *
- * @ingroup base
- */
-class I2_BASE_API Url : public ObjectImpl<Url>
-{
-public:
-	DECLARE_OBJECT(Url);
+//authority = [ userinfo "@" ] host [ ":" port ]
+#define ACUSERINFO UNRESERVED SUB_DELIMS ":"
+#define ACHOST UNRESERVED SUB_DELIMS
+#define ACPORT NUMERIC
 
-	inline Url(void)
-		: m_Valid(false)
-	{ }
+#define ACPATH ALPHA NUMERIC
+#define ACQUERY PCHAR "/?"
+#define ACFRAGMENT PCHAR "/?"
 
-	inline ~Url(void)
-	{ }
-
-	bool Parse(const String& url);
-	String Format(void) const;
-	bool IsValid(void) const;
-
-	String GetAuthority(void) const;
-	String GetScheme(void) const;
-	std::map<String,Value> GetQuery(void) const;
-	Value GetQueryElement(const String& name) const;
-	std::vector<String> GetPath(void) const;
-
-private:
-	bool m_Valid;
-	String m_UnreservedCharacters;
-
-	String m_Authority;
-	String m_Scheme;
-	std::map<String,Value> m_Query;
-	std::vector<String> m_Path;
-
-	bool ValidateToken(const String& token, const String& symbols, const bool illegal=0);
-	bool ParseScheme(const String& scheme);
-	bool ParseAuthority(const String& host);
-	bool ParsePath(const String& path);
-	bool ParseQuery(const String& path);
-};
-
-}
-#endif /* URL_H */
+#endif /* URL_CHARACTERS_H */
