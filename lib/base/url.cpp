@@ -81,10 +81,10 @@ bool Url::Parse(const String& base_url)
 		return m_Valid;
 
 	url = url.SubStr(pHelper);
-
+	
 	if (*url.Begin() == '?') {
 		pHelper = url.Find("#");
-		if (!ParseQuery(url.SubStr(0, pHelper)))
+		if (!ParseQuery(url.SubStr(1, pHelper)))
 			return m_Valid;
 	}
 
@@ -136,9 +136,11 @@ String Url::Format(void) const
 	String url = "";
 
 	if (!m_Scheme.IsEmpty())
-		url += m_Scheme + "://";
+		url += m_Scheme + ":";
 
-	url += m_Authority;
+	if (!m_Authority.IsEmpty())
+		url += "//" + m_Authority;
+	std::cout << url << '\n';
 
 	BOOST_FOREACH (const String p, m_Path) {
 		url += '/';
@@ -146,13 +148,13 @@ String Url::Format(void) const
 	}
 
 	String param = "";
-
+	std::cout << url << '\n';
 	if (!m_Query.empty()) {
 		typedef std::pair<String,Value> kv_pair;
 
 		BOOST_FOREACH (const kv_pair kv, m_Query) {
 			String key = Utility::EscapeString(kv.first, ACQUERY, false);
-
+			std::cout << key << '\n';
 			if (param.IsEmpty())
 				param = "?";
 			else
@@ -227,21 +229,33 @@ bool Url::ParseQuery(const String& parameters)
 
 
 	BOOST_FOREACH(const String& token, tokens) {
-		size_t kvSep = token.Find("=");
+		size_t pHelper = token.Find("=");
 
-		std::cout << token << '\n';
-		if (kvSep == String::NPos)
-			return false;
+		String key = token.SubStr(0, pHelper);
+		String value = Empty;
 
-		String key = token.SubStr(0, kvSep);
-		String value = token.SubStr(kvSep+1);
+		if (pHelper != String::NPos) {
+			if (pHelper == token.GetLength()-1)
+				return false;
+			value = Utility::UnescapeString(token.SubStr(pHelper+1));
+			if (!ValidateToken(value, ACQUERY, false))
+				return false;
+		} else
+			String key = token;
 		
-		if (key.IsEmpty() || value.IsEmpty())
+		if (key.IsEmpty()) //maybe continue
 			return false;
 
-		if (key.GetLength() >= 3 && *key.RBegin() == ']' && *(key.RBegin()+1) == '[') {
+		pHelper = key.Find("[]");
+		
+		if (pHelper != String::NPos) {
+
 			key = key.SubStr(0, key.GetLength() - 2);
 			key = Utility::UnescapeString(key);
+
+			if (!ValidateToken(value, ACQUERY, false))
+				return false;
+
 			std::map<String, Value>::iterator it = m_Query.find(key);
 
 			if (it == m_Query.end()) {
@@ -254,8 +268,10 @@ bool Url::ParseQuery(const String& parameters)
 			} else
 				return false;
 		} else {
+
 			key = Utility::UnescapeString(key);
-			if (m_Query.find(key) == m_Query.end())
+
+			if (m_Query.find(key) == m_Query.end() && ValidateToken(key, ACQUERY, false))
 				m_Query[key] = Utility::UnescapeString(value);
 			else
 				return false;
